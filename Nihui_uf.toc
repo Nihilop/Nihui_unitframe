@@ -1,0 +1,78 @@
+## Interface: 110200
+## Title: |cffB92334Nihui|r |cffffffffUF|r |cff00ff00NEW|r
+## Author: nihil (New Modular Architecture)
+## Notes: Modular unitframes system with API-driven architecture
+## Version: 4.0
+## SavedVariables: NihuiUFDB
+
+# Libraries
+libs\libs.xml
+
+# ===========================
+# CORES - Infrastructure
+# ===========================
+core\utils.lua
+core\stripping.lua
+core\stripping_xp.lua
+core\lifecycle.lua
+core\builder.lua
+
+# ===========================
+# INVESTIGATION (Dev tools)
+# ===========================
+investigation\xp_bars_investigation.lua
+
+# ===========================
+# UI - Visual Components
+# ===========================
+ui\bar.lua
+ui\text.lua
+ui\portrait.lua
+ui\aura.lua
+ui\effects.lua
+ui\xp.lua
+
+# ===========================
+# SYSTEMS - Logic APIs
+# ===========================
+systems\health.lua
+systems\power.lua
+systems\text.lua
+systems\classpower.lua
+systems\auras.lua
+systems\xp.lua
+systems\portrait\core.lua
+systems\portrait\classification.lua
+systems\portrait\states.lua
+
+# ===========================
+# UNIFIED API SYSTEM
+# ===========================
+api\unitframe.lua
+
+# ===========================
+# MODULES - Unit Bridges
+# ===========================
+modules\player.lua
+modules\target.lua
+modules\focus.lua
+modules\pet.lua
+modules\targettarget.lua
+modules\focustarget.lua
+modules\party.lua
+modules\raid.lua
+modules\boss.lua
+modules\arena.lua
+modules\xp.lua
+
+# ===========================
+# CONFIGURATION SYSTEM
+# ===========================
+config\defaults.lua
+config\database.lua
+config\panel.lua
+
+# ===========================
+# INITIALIZATION
+# ===========================
+init.lua
