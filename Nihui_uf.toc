@@ -2,7 +2,7 @@
 ## Title: |cffB92334Nihui|r |cffffffffUF|r |cff00ff00NEW|r
 ## Author: nihil (New Modular Architecture)
 ## Notes: Modular unitframes system with API-driven architecture
-## Version: 4.0
+## Version: 4.1
 ## SavedVariables: NihuiUFDB
 
 # Libraries
