@@ -1,4 +1,4 @@
-## Interface: 110200
+## Interface: 110205
 ## Title: |cffB92334Nihui|r |cffffffffUF|r |cff00ff00NEW|r
 ## Author: nihil (New Modular Architecture)
 ## Notes: Modular unitframes system with API-driven architecture
