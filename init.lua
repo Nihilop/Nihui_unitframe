@@ -271,6 +271,7 @@ local function InitializeAddon()
         LSM:Register("statusbar", "g1", "Interface\\AddOns\\Nihui_uf\\textures\\g1.tga")
         LSM:Register("statusbar", "HPglass", "Interface\\AddOns\\Nihui_uf\\textures\\HPglass.tga")
         LSM:Register("statusbar", "HPglassADD", "Interface\\AddOns\\Nihui_uf\\textures\\HPglassADD.tga")
+        LSM:Register("statusbar", "HPDHD", "Interface\\AddOns\\Nihui_uf\\textures\\HPDHD.tga")
     end
 
     -- Step 2: Initialize core systems

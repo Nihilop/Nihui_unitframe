@@ -176,6 +176,40 @@ function ns.Systems.Health.Create(parent, unitToken, config)
     end
 
     -- ===========================
+    -- LOW HEALTH WARNING OVERLAY
+    -- ===========================
+    -- Create low health warning overlay (powerHL1 texture from Nihui_cb)
+    -- Inspired by castbar positioning for proper alignment
+    if healthSystem.barSet.border then
+        local borderFrame = healthSystem.barSet.border
+
+        -- Create warning overlay texture
+        healthSystem.lowHealthWarning = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+        healthSystem.lowHealthWarning:SetTexture("Interface\\AddOns\\Nihui_uf\\textures\\powerHL1.tga")
+        healthSystem.lowHealthWarning:SetBlendMode("ADD") -- Additive blending for glow effect
+        healthSystem.lowHealthWarning:SetVertexColor(1, 0, 0, 0.7) -- Red tint
+
+        -- Proportional sizing like Nihui_cb castbar (width * 1.1, height * 2)
+        local barWidth, barHeight = healthSystem.bar:GetSize()
+        healthSystem.lowHealthWarning:SetSize(barWidth * 1.1, barHeight * 2)
+        healthSystem.lowHealthWarning:SetPoint("CENTER", healthSystem.bar, "CENTER")
+
+        -- Apply texture flip based on portrait flip setting
+        local unitConfig = ns.DB.GetUnitConfig(unitToken:match("^(%a+)%d*$") or unitToken)
+        if unitConfig and unitConfig.portrait and unitConfig.portrait.flip then
+            -- Flip texture horizontally (swap left/right coordinates)
+            healthSystem.lowHealthWarning:SetTexCoord(1, 0, 1, 1, 0, 0, 0, 1)
+        else
+            -- Normal texture coordinates
+            healthSystem.lowHealthWarning:SetTexCoord(0, 0, 0, 1, 1, 0, 1, 1)
+        end
+
+        -- Hide by default
+        healthSystem.lowHealthWarning:Hide()
+        healthSystem.lowHealthWarningActive = false
+    end
+
+    -- ===========================
     -- UPDATE METHODS
     -- ===========================
 
@@ -222,7 +256,103 @@ function ns.Systems.Health.Create(parent, unitToken, config)
             self.textElement:UpdateValue(current, max)
         end
 
+        -- Update low health warning (30% threshold)
+        if self.lowHealthWarning then
+            self:UpdateLowHealthWarning(current, max)
+        end
+
         return true
+    end
+
+    -- Update low health warning overlay (triggered at 30% health)
+    function healthSystem:UpdateLowHealthWarning(currentHealth, maxHealth)
+        if not self.lowHealthWarning then return end
+
+        -- Calculate health percentage
+        local healthPct = (maxHealth > 0) and (currentHealth / maxHealth) or 1
+
+        -- Trigger at 30% or below
+        if healthPct <= 0.30 then
+            if not self.lowHealthWarningActive then
+                self.lowHealthWarning:Show()
+                self.lowHealthWarningActive = true
+
+                -- Start breathing animation
+                self:StartLowHealthBreathingAnimation()
+            end
+        else
+            if self.lowHealthWarningActive then
+                self.lowHealthWarning:Hide()
+                self.lowHealthWarningActive = false
+
+                -- Stop breathing animation
+                if self.lowHealthBreathingAnimation then
+                    self.lowHealthBreathingAnimation:Cancel()
+                    self.lowHealthBreathingAnimation = nil
+                end
+            end
+        end
+    end
+
+    -- Breathing animation for low health warning (alpha pulsing)
+    function healthSystem:StartLowHealthBreathingAnimation()
+        if not self.lowHealthWarning then return end
+
+        -- Stop any existing animation
+        if self.lowHealthBreathingAnimation then
+            self.lowHealthBreathingAnimation:Cancel()
+        end
+
+        local startTime = GetTime()
+        self.lowHealthBreathingAnimation = C_Timer.NewTicker(0.05, function()
+            -- Check if warning is still active
+            if not self.lowHealthWarning or not self.lowHealthWarningActive then
+                if self.lowHealthBreathingAnimation then
+                    self.lowHealthBreathingAnimation:Cancel()
+                    self.lowHealthBreathingAnimation = nil
+                end
+                return true
+            end
+
+            -- Breathing effect: alpha pulse from 0.3 to 1.0
+            local elapsed = GetTime() - startTime
+            local pulsePhase = math.sin(elapsed * 2) -- 2 = breathing speed (slower than sparks)
+
+            -- Alpha from 0.3 (dark) to 1.0 (bright) with smooth IN_OUT
+            local alpha = 0.65 + (pulsePhase * 0.35)
+            self.lowHealthWarning:SetAlpha(alpha)
+        end)
+    end
+
+    -- Destroy low health warning overlay
+    function healthSystem:DestroyLowHealthWarning()
+        -- Stop animation
+        if self.lowHealthBreathingAnimation then
+            self.lowHealthBreathingAnimation:Cancel()
+            self.lowHealthBreathingAnimation = nil
+        end
+
+        -- Destroy texture
+        if self.lowHealthWarning then
+            self.lowHealthWarning:Hide()
+            self.lowHealthWarning:SetTexture(nil)
+            self.lowHealthWarning = nil
+        end
+
+        self.lowHealthWarningActive = false
+    end
+
+    -- Update low health warning texture flip based on portrait flip setting
+    function healthSystem:UpdateLowHealthWarningFlip(portraitFlip)
+        if not self.lowHealthWarning then return end
+
+        if portraitFlip then
+            -- Flip texture horizontally (swap left/right coordinates)
+            self.lowHealthWarning:SetTexCoord(1, 0, 1, 1, 0, 0, 0, 1)
+        else
+            -- Normal texture coordinates
+            self.lowHealthWarning:SetTexCoord(0, 0, 0, 1, 1, 0, 1, 1)
+        end
     end
 
     -- Update animated loss bar (clean single-animation system)
@@ -817,6 +947,25 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
         frame:RegisterEvent("UNIT_PET")
 
+        -- IMPORTANT: WoW doesn't fire UNIT_HEALTH reliably for targettarget/focustarget
+        -- We need OnUpdate polling for real-time health updates on these units
+        if self.unit == "targettarget" or self.unit == "focustarget" then
+            local timeSinceLastUpdate = 0
+            local UPDATE_INTERVAL = 0.1  -- Update every 0.1 seconds (10 FPS)
+
+            frame:SetScript("OnUpdate", function(_, elapsed)
+                timeSinceLastUpdate = timeSinceLastUpdate + elapsed
+
+                if timeSinceLastUpdate >= UPDATE_INTERVAL then
+                    timeSinceLastUpdate = 0
+
+                    if UnitExists(self.unit) then
+                        self:UpdateHealth()
+                    end
+                end
+            end)
+        end
+
         frame:SetScript("OnEvent", function(_, event, eventUnit)
             if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
                 if eventUnit == self.unit then
@@ -945,6 +1094,9 @@ function ns.Systems.Health.Create(parent, unitToken, config)
 
         -- Destroy absorb spark completely
         self:DestroyAbsorbSpark()
+
+        -- Destroy low health warning overlay
+        self:DestroyLowHealthWarning()
 
         self.textElement = nil
     end

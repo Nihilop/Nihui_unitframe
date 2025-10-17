@@ -251,6 +251,25 @@ function ns.Systems.Power.Create(parent, unitToken, config)
         frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
         frame:RegisterEvent("UNIT_PET")
 
+        -- IMPORTANT: WoW doesn't fire UNIT_POWER_UPDATE reliably for targettarget/focustarget
+        -- We need OnUpdate polling for real-time power updates on these units
+        if self.unit == "targettarget" or self.unit == "focustarget" then
+            local timeSinceLastUpdate = 0
+            local UPDATE_INTERVAL = 0.1  -- Update every 0.1 seconds (10 FPS)
+
+            frame:SetScript("OnUpdate", function(_, elapsed)
+                timeSinceLastUpdate = timeSinceLastUpdate + elapsed
+
+                if timeSinceLastUpdate >= UPDATE_INTERVAL then
+                    timeSinceLastUpdate = 0
+
+                    if UnitExists(self.unit) then
+                        self:UpdatePower()
+                    end
+                end
+            end)
+        end
+
         frame:SetScript("OnEvent", function(_, event, eventUnit, powerToken)
             if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
                 if eventUnit == self.unit then

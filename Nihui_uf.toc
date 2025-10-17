@@ -2,7 +2,7 @@
 ## Title: |cffB92334Nihui|r |cffffffffUF|r |cff00ff00NEW|r
 ## Author: nihil (New Modular Architecture)
 ## Notes: Modular unitframes system with API-driven architecture
-## Version: 4.1
+## Version: 1.0.0
 ## SavedVariables: NihuiUFDB
 
 # Libraries
@@ -16,11 +16,6 @@ core\stripping.lua
 core\stripping_xp.lua
 core\lifecycle.lua
 core\builder.lua
-
-# ===========================
-# INVESTIGATION (Dev tools)
-# ===========================
-investigation\xp_bars_investigation.lua
 
 # ===========================
 # UI - Visual Components
