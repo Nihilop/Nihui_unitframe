@@ -1,8 +1,10 @@
 ## Interface: 110205
-## Title: |cffB92334Nihui|r |cffffffffUF|r |cff00ff00NEW|r
+## Title: |cff00ff00Nihui|r |cffffffffUnitframes|r
+## Category: NihUI
 ## Author: nihil (New Modular Architecture)
 ## Notes: Modular unitframes system with API-driven architecture
 ## Version: 1.0.0
+## IconAtlas: GarrMission_MissionIcon-Recruit
 ## SavedVariables: NihuiUFDB
 
 # Libraries
