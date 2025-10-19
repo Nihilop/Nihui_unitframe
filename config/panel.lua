@@ -1231,6 +1231,40 @@ local function GetOptions()
                                     set = function(_, value)
                                         SetValueAndRefresh("target", "auras", "offsetY", value)
                                     end,
+                                },
+                                maxRows = {
+                                    name = "Max Rows",
+                                    desc = "Maximum number of rows to display (0 = unlimited)",
+                                    type = "range",
+                                    order = 9,
+                                    min = 0, max = 10, step = 1,
+                                    disabled = function() return not ns.DB.GetUnitSetting("target", "auras", "enabled") end,
+                                    get = function() return ns.DB.GetUnitSetting("target", "auras", "maxRows") or 5 end,
+                                    set = function(_, value)
+                                        SetValueAndRefresh("target", "auras", "maxRows", value)
+                                    end,
+                                },
+                                showOnlyPlayerDebuffs = {
+                                    name = "Show Only Player Debuffs",
+                                    desc = "Display only debuffs applied by you or your pet",
+                                    type = "toggle",
+                                    order = 10,
+                                    disabled = function() return not ns.DB.GetUnitSetting("target", "auras", "enabled") end,
+                                    get = function() return ns.DB.GetUnitSetting("target", "auras", "showOnlyPlayerDebuffs") == true end,
+                                    set = function(_, value)
+                                        SetValueAndRefresh("target", "auras", "showOnlyPlayerDebuffs", value)
+                                    end,
+                                },
+                                stackSimilarAuras = {
+                                    name = "Stack Similar Auras",
+                                    desc = "Group identical debuffs together and show count. Shows the shortest remaining duration.",
+                                    type = "toggle",
+                                    order = 11,
+                                    disabled = function() return not ns.DB.GetUnitSetting("target", "auras", "enabled") end,
+                                    get = function() return ns.DB.GetUnitSetting("target", "auras", "stackSimilarAuras") == true end,
+                                    set = function(_, value)
+                                        SetValueAndRefresh("target", "auras", "stackSimilarAuras", value)
+                                    end,
                                 }
                             }
                         }

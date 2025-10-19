@@ -30,8 +30,8 @@ function ns.DB.Initialize()
         if not NihuiUFDB.profile.unitframes[unitType] then
             NihuiUFDB.profile.unitframes[unitType] = ns.Utils.DeepCopy(defaultConfig)
         else
-            -- Merge any missing default values for addon updates
-            ns.Utils.MergeTables(NihuiUFDB.profile.unitframes[unitType], defaultConfig)
+            -- Merge any missing default values for addon updates (MUST CAPTURE RETURN VALUE!)
+            NihuiUFDB.profile.unitframes[unitType] = ns.Utils.MergeTables(NihuiUFDB.profile.unitframes[unitType], defaultConfig)
         end
     end
 
@@ -39,14 +39,14 @@ function ns.DB.Initialize()
     if not NihuiUFDB.profile.xp and ns.Config.Defaults.xp then
         NihuiUFDB.profile.xp = ns.Utils.DeepCopy(ns.Config.Defaults.xp)
     elseif ns.Config.Defaults.xp then
-        ns.Utils.MergeTables(NihuiUFDB.profile.xp, ns.Config.Defaults.xp)
+        NihuiUFDB.profile.xp = ns.Utils.MergeTables(NihuiUFDB.profile.xp, ns.Config.Defaults.xp)
     end
 
     -- Initialize Reputation bar configuration
     if not NihuiUFDB.profile.reputation and ns.Config.Defaults.reputation then
         NihuiUFDB.profile.reputation = ns.Utils.DeepCopy(ns.Config.Defaults.reputation)
     elseif ns.Config.Defaults.reputation then
-        ns.Utils.MergeTables(NihuiUFDB.profile.reputation, ns.Config.Defaults.reputation)
+        NihuiUFDB.profile.reputation = ns.Utils.MergeTables(NihuiUFDB.profile.reputation, ns.Config.Defaults.reputation)
     end
 
     -- ===========================

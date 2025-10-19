@@ -196,11 +196,14 @@ ns.Config.Defaults = {
                 enabled = true,
                 scale = 0.65,
                 perRow = 4,
+                maxRows = 5,  -- Limit to 5 rows max
                 direction = "DOWN",
                 showTimer = false,
                 spacing = 2,
                 offsetX = -119,
-                offsetY = 15
+                offsetY = 15,
+                showOnlyPlayerDebuffs = false,  -- Filter to show only player's debuffs
+                stackSimilarAuras = false  -- Group identical auras and show count
             }
         },
 
@@ -716,8 +719,8 @@ ns.Config.Defaults = {
                 nameLevel = {
                     enabled = true,
                     containerOffset = {
-                        x = 0,
-                        y = 2
+                        x = 2,
+                        y = -16
                     }
                 },
                 level = {

@@ -164,30 +164,139 @@ end
 function raidModule:StripBlizzardRaidFrame(frame)
     if not frame then return end
 
-    -- Hide health/power bars
+    -- CRITICAL: Hide health/power bars completely and disable updates
     if frame.healthBar then
-        if frame.healthBar.SetAlpha then frame.healthBar:SetAlpha(0) end
-        if frame.healthBar.UnregisterAllEvents then frame.healthBar:UnregisterAllEvents() end
+        frame.healthBar:Hide()  -- Actually hide it!
+        frame.healthBar:SetAlpha(0)
+        frame.healthBar:SetScript("OnUpdate", nil)  -- Disable updates
+        if frame.healthBar.UnregisterAllEvents then
+            pcall(function() frame.healthBar:UnregisterAllEvents() end)
+        end
     end
 
     if frame.powerBar then
-        if frame.powerBar.SetAlpha then frame.powerBar:SetAlpha(0) end
-        if frame.powerBar.UnregisterAllEvents then frame.powerBar:UnregisterAllEvents() end
+        frame.powerBar:Hide()  -- Actually hide it!
+        frame.powerBar:SetAlpha(0)
+        frame.powerBar:SetScript("OnUpdate", nil)  -- Disable updates
+        if frame.powerBar.UnregisterAllEvents then
+            pcall(function() frame.powerBar:UnregisterAllEvents() end)
+        end
     end
 
-    -- Hide text elements
+    -- CRITICAL: Hide ALL text elements completely
     if frame.name then
-        if frame.name.Hide then frame.name:Hide() end
-        if frame.name.SetAlpha then frame.name:SetAlpha(0) end
+        frame.name:Hide()
+        frame.name:SetAlpha(0)
+        frame.name:SetText("")  -- Clear text
     end
-    if frame.statusText and frame.statusText.Hide then frame.statusText:Hide() end
+
+    if frame.statusText then
+        frame.statusText:Hide()
+        frame.statusText:SetAlpha(0)
+        frame.statusText:SetText("")
+    end
+
+    -- Hide health text that might appear
+    if frame.healthBarText then
+        frame.healthBarText:Hide()
+        frame.healthBarText:SetAlpha(0)
+    end
+
+    if frame.overAbsorbGlow then
+        frame.overAbsorbGlow:Hide()
+    end
+
+    if frame.overHealAbsorbGlow then
+        frame.overHealAbsorbGlow:Hide()
+    end
+
+    -- CRITICAL: Hide low health warning borders (the red glow) and disable its updates
+    if frame.healthBar and frame.healthBar.lowHealthWarning then
+        frame.healthBar.lowHealthWarning:Hide()
+        frame.healthBar.lowHealthWarning:SetAlpha(0)
+        frame.healthBar.lowHealthWarning:SetScript("OnUpdate", nil)
+        frame.healthBar.lowHealthWarning:SetScript("OnShow", function(self) self:Hide() end)
+        if frame.healthBar.lowHealthWarning.UnregisterAllEvents then
+            pcall(function() frame.healthBar.lowHealthWarning:UnregisterAllEvents() end)
+        end
+    end
+
+    if frame.selectionHighlight then
+        frame.selectionHighlight:Hide()
+        frame.selectionHighlight:SetAlpha(0)
+    end
+
+    if frame.aggroHighlight then
+        frame.aggroHighlight:Hide()
+        frame.aggroHighlight:SetAlpha(0)
+    end
 
     -- Hide background and borders
-    if frame.background and frame.background.SetAlpha then frame.background:SetAlpha(0) end
-    if frame.border and frame.border.SetAlpha then frame.border:SetAlpha(0) end
+    if frame.background then
+        frame.background:SetAlpha(0)
+        frame.background:Hide()
+    end
+
+    if frame.border then
+        frame.border:SetAlpha(0)
+        frame.border:Hide()
+    end
+
+    if frame.healthBorder then
+        frame.healthBorder:Hide()
+        frame.healthBorder:SetAlpha(0)
+    end
 
     -- Hide role icon (we create our own)
-    if frame.roleIcon and frame.roleIcon.Hide then frame.roleIcon:Hide() end
+    if frame.roleIcon then
+        frame.roleIcon:Hide()
+        frame.roleIcon:SetAlpha(0)
+    end
+
+    -- Hide buff/debuff frames if any
+    if frame.buffFrames then
+        for i = 1, #frame.buffFrames do
+            if frame.buffFrames[i] then
+                frame.buffFrames[i]:Hide()
+            end
+        end
+    end
+
+    if frame.debuffFrames then
+        for i = 1, #frame.debuffFrames do
+            if frame.debuffFrames[i] then
+                frame.debuffFrames[i]:Hide()
+            end
+        end
+    end
+
+    -- Disable Blizzard's CompactUnitFrame updates
+    if frame.UpdateAllElements then
+        frame.UpdateAllElements = function() end  -- Noop
+    end
+
+    -- IMPORTANT: Keep mouse enabled on the Blizzard frame for click handlers to work
+    -- We only hide visual elements, but preserve the frame's click functionality
+    -- The Blizzard frame remains the click target for spells, macros, and mouse interactions
+    frame:EnableMouse(true)
+    if frame.SetMouseClickEnabled then
+        frame:SetMouseClickEnabled(true)
+    end
+
+    -- Also ensure child elements don't block mouse clicks by keeping them disabled
+    if frame.healthBar then
+        frame.healthBar:EnableMouse(false)
+        if frame.healthBar.SetMouseClickEnabled then
+            frame.healthBar:SetMouseClickEnabled(false)
+        end
+    end
+
+    if frame.powerBar then
+        frame.powerBar:EnableMouse(false)
+        if frame.powerBar.SetMouseClickEnabled then
+            frame.powerBar:SetMouseClickEnabled(false)
+        end
+    end
 end
 
 -- Enable debug mode (fake raid members for testing)
@@ -225,6 +334,15 @@ function raidModule:CreateMember(index, unitToken, parentFrame)
         end
 
         blizzardFrame = _G[frameName]
+    end
+
+    -- CRITICAL FIX: Get the REAL unitToken from the Blizzard frame, don't guess!
+    if blizzardFrame and blizzardFrame.unit then
+        unitToken = blizzardFrame.unit  -- Use Blizzard's actual unit assignment
+        print(string.format("Nihui_uf RAID: Frame %s -> %s", frameName or "unknown", unitToken))
+    elseif not unitToken then
+        -- Fallback if no Blizzard frame found
+        unitToken = "raid" .. index
     end
 
     -- If still no frame, create our fallback (for testing when not in raid or raid frames not loaded)

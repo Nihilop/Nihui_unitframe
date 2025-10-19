@@ -97,11 +97,14 @@ function ns.Systems.Auras.Create(parent, unitToken, config)
     -- Default configuration
     auraSystem.config.scale = auraSystem.config.scale or 1
     auraSystem.config.perRow = auraSystem.config.perRow or 8
+    auraSystem.config.maxRows = auraSystem.config.maxRows or nil  -- No limit by default
     auraSystem.config.direction = auraSystem.config.direction or "RIGHT"
     auraSystem.config.showTimer = auraSystem.config.showTimer ~= false
     auraSystem.config.spacing = auraSystem.config.spacing or 2
     auraSystem.config.offsetX = auraSystem.config.offsetX or 0
     auraSystem.config.offsetY = auraSystem.config.offsetY or -5
+    auraSystem.config.showOnlyPlayerDebuffs = auraSystem.config.showOnlyPlayerDebuffs or false
+    auraSystem.config.stackSimilarAuras = auraSystem.config.stackSimilarAuras or false
 
     -- Create containers using UI function
     auraSystem.buffContainer = ns.UI.Aura.CreateContainer(parent, nil)
@@ -172,12 +175,82 @@ function ns.Systems.Auras.Create(parent, unitToken, config)
             buffIndex = buffIndex + 1
         end
 
-        -- Get debuffs
+        -- Calculate max auras to display based on maxRows
+        local maxAuras = nil
+        if self.config.maxRows and self.config.maxRows > 0 then
+            maxAuras = self.config.maxRows * self.config.perRow
+            -- DEBUG: Uncomment to see values
+            -- print(string.format("DEBUG Auras: maxRows=%s, perRow=%s, maxAuras=%s", tostring(self.config.maxRows), tostring(self.config.perRow), tostring(maxAuras)))
+        end
+
+        -- STEP 1: Collect all debuffs
+        local allDebuffs = {}
         local debuffIndex = 1
         while true do
             local auraData = C_UnitAuras.GetAuraDataByIndex(self.unit, debuffIndex, "HARMFUL")
             if not auraData then break end
 
+            -- Filter: Only show player's debuffs if option is enabled
+            local shouldShow = true
+            if self.config.showOnlyPlayerDebuffs then
+                shouldShow = (auraData.sourceUnit == "player" or auraData.sourceUnit == "pet")
+            end
+
+            if shouldShow then
+                table.insert(allDebuffs, auraData)
+            end
+
+            debuffIndex = debuffIndex + 1
+        end
+
+        -- STEP 2: Group similar auras if enabled
+        local debuffsToDisplay = {}
+        if self.config.stackSimilarAuras then
+            -- Group by spellId
+            local grouped = {}
+            for _, auraData in ipairs(allDebuffs) do
+                local spellId = auraData.spellId
+                if not grouped[spellId] then
+                    grouped[spellId] = {
+                        auraData = auraData,
+                        count = 1,
+                        shortestExpiration = auraData.expirationTime or math.huge
+                    }
+                else
+                    grouped[spellId].count = grouped[spellId].count + 1
+                    -- Keep aura with shortest expiration time
+                    if auraData.expirationTime and auraData.expirationTime < grouped[spellId].shortestExpiration then
+                        grouped[spellId].auraData = auraData
+                        grouped[spellId].shortestExpiration = auraData.expirationTime
+                    end
+                end
+            end
+
+            -- Convert to display list
+            for _, groupData in pairs(grouped) do
+                table.insert(debuffsToDisplay, {
+                    auraData = groupData.auraData,
+                    stackCount = groupData.count
+                })
+            end
+        else
+            -- No grouping - use original count
+            for _, auraData in ipairs(allDebuffs) do
+                table.insert(debuffsToDisplay, {
+                    auraData = auraData,
+                    stackCount = auraData.applications  -- Original stack count
+                })
+            end
+        end
+
+        -- STEP 3: Display auras (respecting max limit)
+        for i, displayData in ipairs(debuffsToDisplay) do
+            -- Check if we've reached the max auras limit
+            if maxAuras and #self.debuffFrames >= maxAuras then
+                break
+            end
+
+            local auraData = displayData.auraData
             local frame = GetAuraFrame(self.debuffContainer, "debuff")
             frame.auraData = auraData
             frame.unit = self.unit
@@ -185,8 +258,8 @@ function ns.Systems.Auras.Create(parent, unitToken, config)
             -- Set icon using UI function
             ns.UI.Aura.SetIcon(frame, auraData.icon)
 
-            -- Set stack count using UI function
-            ns.UI.Aura.SetCount(frame, auraData.applications)
+            -- Set stack count (either grouped count or original stacks)
+            ns.UI.Aura.SetCount(frame, displayData.stackCount)
 
             -- Set duration using UI functions
             if auraData.duration and auraData.duration > 0 and auraData.expirationTime then
@@ -216,7 +289,6 @@ function ns.Systems.Auras.Create(parent, unitToken, config)
             ns.UI.Aura.EnableTooltip(frame)
 
             table.insert(self.debuffFrames, frame)
-            debuffIndex = debuffIndex + 1
         end
 
         -- Position frames using UI function

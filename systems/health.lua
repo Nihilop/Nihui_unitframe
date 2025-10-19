@@ -271,8 +271,8 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         -- Calculate health percentage
         local healthPct = (maxHealth > 0) and (currentHealth / maxHealth) or 1
 
-        -- Trigger at 30% or below
-        if healthPct <= 0.30 then
+        -- Trigger at 30% or below, but NOT at 0% (dead)
+        if healthPct <= 0.30 and currentHealth > 0 then
             if not self.lowHealthWarningActive then
                 self.lowHealthWarning:Show()
                 self.lowHealthWarningActive = true
