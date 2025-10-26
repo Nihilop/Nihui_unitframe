@@ -133,14 +133,6 @@ local function SetupModules()
             priority = 7
         },
         {
-            name = "raid",
-            module = ns.Modules.Raid,
-            available = function()
-                return true -- Raid handles its own visibility and frame creation
-            end,
-            priority = 8
-        },
-        {
             name = "boss",
             module = ns.Modules.Boss,
             available = function()

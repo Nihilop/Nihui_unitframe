@@ -190,8 +190,7 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         healthSystem.lowHealthWarning:SetVertexColor(1, 0, 0, 0.7) -- Red tint
 
         -- Proportional sizing like Nihui_cb castbar (width * 1.1, height * 2)
-        local barWidth, barHeight = healthSystem.bar:GetSize()
-        healthSystem.lowHealthWarning:SetSize(barWidth * 1.1, barHeight * 2)
+        -- IMPORTANT: Size will be updated dynamically in UpdateLowHealthWarningSize()
         healthSystem.lowHealthWarning:SetPoint("CENTER", healthSystem.bar, "CENTER")
 
         -- Apply texture flip based on portrait flip setting
@@ -353,6 +352,19 @@ function ns.Systems.Health.Create(parent, unitToken, config)
             -- Normal texture coordinates
             self.lowHealthWarning:SetTexCoord(0, 0, 0, 1, 1, 0, 1, 1)
         end
+    end
+
+    -- Update low health warning size based on current health bar dimensions
+    -- CRITICAL: This ensures the warning indicator scales with the health bar
+    -- regardless of unitframe size (player, raid, party, etc.)
+    function healthSystem:UpdateLowHealthWarningSize()
+        if not self.lowHealthWarning or not self.bar then return end
+
+        -- Get current health bar dimensions
+        local barWidth, barHeight = self.bar:GetSize()
+
+        -- Apply proportional sizing (same formula as creation: width * 1.1, height * 2)
+        self.lowHealthWarning:SetSize(barWidth * 1.1, barHeight * 2)
     end
 
     -- Update animated loss bar (clean single-animation system)
@@ -1019,6 +1031,8 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         -- Update bar size
         if self.bar and newHealthConfig.width and newHealthConfig.height then
             self.bar:SetSize(newHealthConfig.width, newHealthConfig.height)
+            -- CRITICAL: Update low health warning size to match new bar dimensions
+            self:UpdateLowHealthWarningSize()
         end
 
         -- Update bar texture
@@ -1067,6 +1081,9 @@ function ns.Systems.Health.Create(parent, unitToken, config)
                 ns.UI.Bar.SetValue(self.barSet.overlays.animatedLoss.bar, currentHealth, maxHealth)
             end
         end
+
+        -- Initialize low health warning size to match current bar dimensions
+        self:UpdateLowHealthWarningSize()
 
         self:RegisterEvents()
         self:UpdateVisibility()
