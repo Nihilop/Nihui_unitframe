@@ -48,63 +48,64 @@ function partyModule:Initialize()
     self.initialized = true
 end
 
--- Initialize real party frames (when actually in a group)
+-- OPTIMIZED: Initialize real party frames with incremental updates instead of full recreation
 function partyModule:InitializeRealParty()
-    -- CLEAR AND RECREATE strategy (like raid module)
-    -- This ensures unitTokens are always synchronized with WoW's current roster
-    -- When party2 leaves, WoW makes party3 -> party2, so we need to recreate everything
+    -- OPTIMIZED: Incremental update strategy instead of CLEAR AND RECREATE
+    -- Only create/update frames that actually changed
+    -- This prevents massive stuttering from constant frame destruction/recreation
 
-    -- Destroy all existing frames completely
-    self:DestroyAllMembers()
-
-    -- Create frames for all existing party members
     for i = 1, 4 do
         local unitToken = "party" .. i
+        local member = self.members[i]
+
         if UnitExists(unitToken) then
-            -- CRITICAL: Force portrait recreation for this party slot
-            -- Clear the stored portraitFrame so API creates a fresh one with correct parent
-            if ns.Systems and ns.Systems.Portrait then
+            -- Unit exists: create if needed, otherwise just update
+            if not member or not member.unitFrame then
+                -- Create new member frame
                 local partyUnit = "Party" .. i
 
-                -- Clear portrait cache (overlays)
-                if ns.Systems.Portrait.ClearPortraitCache then
-                    ns.Systems.Portrait.ClearPortraitCache(partyUnit)
+                -- Clear portrait cache only for NEW frames
+                if ns.Systems and ns.Systems.Portrait then
+                    if ns.Systems.Portrait.ClearPortraitCache then
+                        ns.Systems.Portrait.ClearPortraitCache(partyUnit)
+                    end
+                    if ns.Systems.Portrait.RemovePortraitFrame then
+                        ns.Systems.Portrait.RemovePortraitFrame(partyUnit)
+                    end
                 end
 
-                -- FORCE recreation by removing stored portraitFrame
-                if ns.Systems.Portrait.RemovePortraitFrame then
-                    ns.Systems.Portrait.RemovePortraitFrame(partyUnit)
-                end
+                member = self:CreateMember(i, unitToken, nil)
             end
 
-            local member = self:CreateMember(i, unitToken, nil)
-
-            -- CRITICAL: Force immediate update of all systems after creation
-            -- This ensures fresh data is displayed (not cached from previous member)
+            -- Update existing frame (much cheaper than recreation)
             if member and member.unitFrame then
-                -- Force health update
+                -- Show frame if hidden
+                if member.frame then
+                    member.frame:Show()
+                end
+
+                -- Update all systems (lightweight compared to recreation)
                 if member.unitFrame.healthSystem and member.unitFrame.healthSystem.UpdateHealth then
                     member.unitFrame.healthSystem:UpdateHealth()
                 end
 
-                -- Force power update
                 if member.unitFrame.powerSystem and member.unitFrame.powerSystem.UpdatePower then
                     member.unitFrame.powerSystem:UpdatePower()
                 end
 
-                -- Force text update (name, level, etc.)
                 if member.unitFrame.textSystem and member.unitFrame.textSystem.UpdateAll then
                     member.unitFrame.textSystem:UpdateAll()
                 end
 
-                -- Force portrait update with delay (Blizzard SetPortraitTexture needs time to refresh)
+                -- Update portrait only if unit GUID changed (cached in portrait system now)
                 if member.unitFrame.portraitSystem and member.unitFrame.portraitSystem.UpdatePortrait then
-                    C_Timer.After(0.1, function()
-                        if member.unitFrame and member.unitFrame.portraitSystem then
-                            member.unitFrame.portraitSystem:UpdatePortrait()
-                        end
-                    end)
+                    member.unitFrame.portraitSystem:UpdatePortrait()
                 end
+            end
+        else
+            -- Unit doesn't exist: hide frame instead of destroying
+            if member and member.frame then
+                member.frame:Hide()
             end
         end
     end
@@ -707,8 +708,19 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")  -- For initial UI setup when PartyFram
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("UNIT_CONNECTION")  -- For connection changes
 
+-- OPTIMIZED: Throttle GROUP_ROSTER_UPDATE to prevent spam
+local lastRosterUpdate = 0
+local ROSTER_UPDATE_THROTTLE = 0.1  -- Max once per 0.1s
+
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "GROUP_ROSTER_UPDATE" then
+        -- OPTIMIZED: Throttle to prevent excessive updates during roster spam
+        local now = GetTime()
+        if now - lastRosterUpdate < ROSTER_UPDATE_THROTTLE then
+            return
+        end
+        lastRosterUpdate = now
+
         -- Auto-update when group changes
         if partyModule.initialized then
             if not partyModule.debugMode then

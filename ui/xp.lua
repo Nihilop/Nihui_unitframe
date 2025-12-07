@@ -117,7 +117,8 @@ function ns.UI.XP.ShowPreview(previewData, targetXP, maxXP)
     local startTime = GetTime()
     local duration = config.duration or 0.3
 
-    previewData.fadeTicker = C_Timer.NewTicker(0.01, function()
+    -- OPTIMIZED: 0.033s (~30 FPS) instead of 0.01s (100 FPS)
+    previewData.fadeTicker = C_Timer.NewTicker(0.033, function()
         local elapsed = GetTime() - startTime
         local progress = math.min(elapsed / duration, 1)
 
@@ -147,7 +148,8 @@ function ns.UI.XP.HidePreview(previewData)
     local startTime = GetTime()
     local duration = (config.duration or 0.3) * 0.5 -- Fade out faster
 
-    previewData.fadeTicker = C_Timer.NewTicker(0.01, function()
+    -- OPTIMIZED: 0.033s (~30 FPS) instead of 0.01s (100 FPS)
+    previewData.fadeTicker = C_Timer.NewTicker(0.033, function()
         local elapsed = GetTime() - startTime
         local progress = math.min(elapsed / duration, 1)
 

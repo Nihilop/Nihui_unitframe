@@ -303,7 +303,8 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         end
 
         local startTime = GetTime()
-        self.lowHealthBreathingAnimation = C_Timer.NewTicker(0.05, function()
+        -- OPTIMIZED: 0.1s instead of 0.05s (still smooth, half the CPU usage)
+        self.lowHealthBreathingAnimation = C_Timer.NewTicker(0.1, function()
             -- Check if warning is still active
             if not self.lowHealthWarning or not self.lowHealthWarningActive then
                 if self.lowHealthBreathingAnimation then
@@ -435,7 +436,8 @@ function ns.Systems.Health.Create(parent, unitToken, config)
 
         -- Start animation
         local startTime = GetTime()
-        self.animationTicker = C_Timer.NewTicker(0.02, function()
+        -- OPTIMIZED: 0.033s (~30 FPS) instead of 0.02s (50 FPS) - still very smooth
+        self.animationTicker = C_Timer.NewTicker(0.033, function()
             local elapsed = GetTime() - startTime
             local progress = elapsed / animationDuration
 
@@ -599,7 +601,8 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         if not self.healSpark or not self.healSparkGlow or not self.healSparkGlowOuter then return end
 
         local startTime = GetTime()
-        self.sparkPulseAnimation = C_Timer.NewTicker(0.05, function()
+        -- OPTIMIZED: 0.1s instead of 0.05s (still smooth, half the CPU usage)
+        self.sparkPulseAnimation = C_Timer.NewTicker(0.1, function()
             -- Only check if textures still exist (not their visibility)
             if not self.healSpark or not self.healSparkGlow or not self.healSparkGlowOuter then
                 if self.sparkPulseAnimation then
@@ -881,7 +884,8 @@ function ns.Systems.Health.Create(parent, unitToken, config)
         if not self.absorbSpark or not self.absorbSparkGlow or not self.absorbSparkGlowOuter then return end
 
         local startTime = GetTime()
-        self.absorbSparkPulseAnimation = C_Timer.NewTicker(0.05, function()
+        -- OPTIMIZED: 0.1s instead of 0.05s (still smooth, half the CPU usage)
+        self.absorbSparkPulseAnimation = C_Timer.NewTicker(0.1, function()
             -- Only check if textures still exist (not their visibility)
             if not self.absorbSpark or not self.absorbSparkGlow or not self.absorbSparkGlowOuter then
                 if self.absorbSparkPulseAnimation then

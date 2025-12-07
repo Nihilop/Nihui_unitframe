@@ -286,56 +286,61 @@ local function StripPlayerFrame()
         contextualWatcher:RegisterEvent("PLAYER_REGEN_DISABLED") -- Entering combat
         contextualWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")  -- Leaving combat
 
+        -- OPTIMIZED: Throttle updates to avoid spam
+        local lastUpdate = 0
         contextualWatcher:SetScript("OnEvent", function(self, event, unit)
             -- Only process player-related events
             if (event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE") and unit ~= "player" then
                 return
             end
 
-            -- Small delay to let Blizzard update the elements first
-            C_Timer.After(0.1, function()
-                HidePlayerContextualElements()
+            -- OPTIMIZED: Throttle to max once per 0.2s to avoid excessive updates
+            local now = GetTime()
+            if now - lastUpdate < 0.2 then return end
+            lastUpdate = now
 
-                -- Also re-strip combat flash elements aggressively
-                if container then
-                    HideAndSuppress(container.FrameFlash)
-                    -- Check all children for flash elements
-                    local children = {container:GetChildren()}
-                    for _, child in ipairs(children) do
-                        if child.GetName then
-                            local name = child:GetName()
-                            if name and (name:find("Flash") or name:find("Hit") or name:find("Red")) then
-                                HideAndSuppress(child)
-                            end
-                        end
-                        -- Also check if it's a texture with red color
-                        if child.GetTexture and child:GetTexture() then
-                            local r, g, b, a = child:GetVertexColor()
-                            if r and r > 0.8 and g < 0.3 and b < 0.3 then -- Detect red flash
-                                HideAndSuppress(child)
-                            end
+            -- OPTIMIZED: Execute immediately instead of creating timer objects
+            HidePlayerContextualElements()
+
+            -- Also re-strip combat flash elements aggressively
+            if container then
+                HideAndSuppress(container.FrameFlash)
+                -- Check all children for flash elements
+                local children = {container:GetChildren()}
+                for _, child in ipairs(children) do
+                    if child.GetName then
+                        local name = child:GetName()
+                        if name and (name:find("Flash") or name:find("Hit") or name:find("Red")) then
+                            HideAndSuppress(child)
                         end
                     end
-                end
-                HideAndSuppress(PlayerFrame.PlayerFrameFlash)
-                HideAndSuppress(_G["PlayerFrameFlash"])
-                HideAndSuppress(_G["PlayerFrameHitIndicator"])
-
-                -- Re-hide HitIndicator flash elements and StatusTexture
-                if main and main.HitIndicator then
-                    if main.HitIndicator.RedFlash then
-                        HideAndSuppress(main.HitIndicator.RedFlash)
-                    end
-                    if main.HitIndicator.Flash then
-                        HideAndSuppress(main.HitIndicator.Flash)
+                    -- Also check if it's a texture with red color
+                    if child.GetTexture and child:GetTexture() then
+                        local r, g, b, a = child:GetVertexColor()
+                        if r and r > 0.8 and g < 0.3 and b < 0.3 then -- Detect red flash
+                            HideAndSuppress(child)
+                        end
                     end
                 end
+            end
+            HideAndSuppress(PlayerFrame.PlayerFrameFlash)
+            HideAndSuppress(_G["PlayerFrameFlash"])
+            HideAndSuppress(_G["PlayerFrameHitIndicator"])
 
-                -- Re-hide the StatusTexture (red combat glow)
-                if main and main.StatusTexture then
-                    HideAndSuppress(main.StatusTexture)
+            -- Re-hide HitIndicator flash elements and StatusTexture
+            if main and main.HitIndicator then
+                if main.HitIndicator.RedFlash then
+                    HideAndSuppress(main.HitIndicator.RedFlash)
                 end
-            end)
+                if main.HitIndicator.Flash then
+                    HideAndSuppress(main.HitIndicator.Flash)
+                end
+            end
+
+            -- Re-hide the StatusTexture (red combat glow)
+            if main and main.StatusTexture then
+                HideAndSuppress(main.StatusTexture)
+            end
         end)
 
         ns.Core.Stripping._playerContextualWatcher = contextualWatcher
@@ -503,13 +508,12 @@ local function StripTargetFrame()
             hooksecurefunc(FocusFrame, "UpdateAuras", ReleaseAllAuras)
         end
 
-        -- Set up periodic clearing timer as backup
-        local clearTimer = C_Timer.NewTicker(0.5, function()
-            PeriodicAuraClear()
-        end)
+        -- OPTIMIZED: Removed continuous 0.5s ticker (wasteful CPU usage)
+        -- The hooksecurefunc above already handles clearing reactively when needed
+        -- No need for a constant background timer
 
         ns.Core.Stripping._targetAuraSystemDisabled = true
-        ns.Core.Stripping._auraClearTimer = clearTimer
+        -- Removed: ns.Core.Stripping._auraClearTimer = clearTimer
     end
 
     -- Legacy fallback
@@ -1086,26 +1090,36 @@ end
 -- PARTY FRAME MONITORING
 -- ===========================
 
--- Monitor party frames for changes and re-strip when needed
+-- OPTIMIZED: Monitor party frames and keep them hidden with hooks instead of constant re-stripping
 local function SetupPartyFrameMonitoring()
     local partyWatcher = CreateFrame("Frame")
-    partyWatcher:RegisterEvent("GROUP_ROSTER_UPDATE")
-    partyWatcher:RegisterEvent("PARTY_MEMBER_ENABLE")
-    partyWatcher:RegisterEvent("PARTY_MEMBER_DISABLE")
-    partyWatcher:RegisterEvent("UNIT_PET")
     partyWatcher:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-    partyWatcher:SetScript("OnEvent", function(self, event, unit)
-        -- Re-strip party frames after any party-related event
-        if event == "GROUP_ROSTER_UPDATE" or
-           event == "PARTY_MEMBER_ENABLE" or
-           event == "PARTY_MEMBER_DISABLE" or
-           event == "PLAYER_ENTERING_WORLD" or
-           (event == "UNIT_PET" and unit and unit:find("party")) then
+    local isInitialized = false
 
-            -- Small delay to let Blizzard recreate frames
-            C_Timer.After(0.1, function()
+    partyWatcher:SetScript("OnEvent", function(self, event, unit)
+        if event == "PLAYER_ENTERING_WORLD" and not isInitialized then
+            isInitialized = true
+
+            -- Strip once on initialization
+            C_Timer.After(0.5, function()
                 StripPartyFrames()
+
+                -- OPTIMIZED: Use hooks to keep frames hidden instead of re-stripping
+                -- This prevents them from showing again without constant CPU usage
+                for i = 1, 5 do
+                    local partyFrame = _G["CompactPartyFrameMember" .. i]
+                    if partyFrame then
+                        partyFrame:HookScript("OnShow", function(self)
+                            self:Hide()
+                        end)
+                        if partyFrame.healthBar then
+                            partyFrame.healthBar:HookScript("OnShow", function(self)
+                                self:Hide()
+                            end)
+                        end
+                    end
+                end
             end)
         end
     end)

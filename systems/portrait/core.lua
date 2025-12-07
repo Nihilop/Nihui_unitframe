@@ -9,6 +9,9 @@ ns.Systems.Portrait = {}
 local overlayFrames = {}
 local activeOverlays = {}
 
+-- OPTIMIZED: Cache portrait textures by GUID to avoid expensive SetPortraitTexture calls
+local portraitTextureCache = {}
+
 -- Classification data (exact rnxmUI style)
 local CLASSIFICATION_TEXTURES = {
     elite = "Interface\\AddOns\\Nihui_uf\\textures\\elite_class1.tga",
@@ -46,6 +49,20 @@ end
 
 -- Set portrait or class icon (exact rnxmUI)
 local function SetPortraitOrClassIcon(portrait, unitString, settings)
+    -- OPTIMIZED: Check if unit changed by comparing GUID to avoid expensive texture update
+    local unitGUID = UnitGUID(unitString)
+    if not unitGUID then
+        portraitTextureCache[portrait] = nil
+        return
+    end
+
+    -- Skip update if same unit (major performance save)
+    if portraitTextureCache[portrait] == unitGUID then
+        return
+    end
+
+    portraitTextureCache[portrait] = unitGUID
+
     if settings.useClassIcon and UnitExists(unitString) and UnitIsPlayer(unitString) then
         local _, class = UnitClass(unitString)
         if class then
@@ -53,6 +70,7 @@ local function SetPortraitOrClassIcon(portrait, unitString, settings)
             return
         end
     end
+    -- OPTIMIZED: Only call this expensive 3D rendering function when unit actually changed
     SetPortraitTexture(portrait, unitString, true)
 end
 
@@ -735,7 +753,8 @@ function StartFlashAnimation(flashData)
 
     -- Simple fade in/out animation
     local startTime = GetTime()
-    flashData.animation = C_Timer.NewTicker(0.05, function()
+    -- OPTIMIZED: 0.1s instead of 0.05s (still smooth, half the CPU usage)
+    flashData.animation = C_Timer.NewTicker(0.1, function()
         local elapsed = GetTime() - startTime
         local progress = (elapsed % duration) / duration
 

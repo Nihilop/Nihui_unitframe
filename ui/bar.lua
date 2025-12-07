@@ -275,7 +275,8 @@ function ns.UI.Bar.AnimateValue(barFrame, oldValue, newValue, maxValue, duration
     end
 
     -- Create ticker for smooth animation and store reference
-    barFrame.animationTicker = C_Timer.NewTicker(0.01, function()
+    -- OPTIMIZED: 0.033s (~30 FPS) instead of 0.01s (100 FPS) - still very smooth
+    barFrame.animationTicker = C_Timer.NewTicker(0.033, function()
         local elapsed = GetTime() - startTime
         local progress = math.min(elapsed / duration, 1)
 

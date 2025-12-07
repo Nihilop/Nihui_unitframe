@@ -149,18 +149,25 @@ function ns.Systems.Auras.Create(parent, unitToken, config)
                 ns.UI.Aura.SetCooldown(frame, auraData.expirationTime - auraData.duration, auraData.duration)
 
                 if self.config.showTimer then
-                    -- Timer update script
+                    -- OPTIMIZED: Throttled timer update (0.1s instead of every frame) with early return
+                    frame.timeSinceLastUpdate = 0
                     frame:SetScript("OnUpdate", function(self, elapsed)
+                        self.timeSinceLastUpdate = self.timeSinceLastUpdate + elapsed
+                        if self.timeSinceLastUpdate < 0.1 then return end  -- OPTIMIZED: Early return skips rest of code
+
+                        self.timeSinceLastUpdate = 0
                         if self.auraData and self.auraData.expirationTime then
                             local remaining = self.auraData.expirationTime - GetTime()
                             if remaining > 0 then
                                 ns.UI.Aura.SetDuration(self, FormatDuration(remaining))
                             else
                                 ns.UI.Aura.SetDuration(self, "")
+                                self:SetScript("OnUpdate", nil)  -- Stop updating when expired
                             end
                         end
                     end)
                 else
+                    frame:SetScript("OnUpdate", nil)  -- Disable OnUpdate if timer not shown
                     ns.UI.Aura.SetDuration(frame, "")
                 end
             else
@@ -266,18 +273,25 @@ function ns.Systems.Auras.Create(parent, unitToken, config)
                 ns.UI.Aura.SetCooldown(frame, auraData.expirationTime - auraData.duration, auraData.duration)
 
                 if self.config.showTimer then
-                    -- Timer update script
+                    -- OPTIMIZED: Throttled timer update (0.1s instead of every frame) with early return
+                    frame.timeSinceLastUpdate = 0
                     frame:SetScript("OnUpdate", function(self, elapsed)
+                        self.timeSinceLastUpdate = self.timeSinceLastUpdate + elapsed
+                        if self.timeSinceLastUpdate < 0.1 then return end  -- OPTIMIZED: Early return skips rest of code
+
+                        self.timeSinceLastUpdate = 0
                         if self.auraData and self.auraData.expirationTime then
                             local remaining = self.auraData.expirationTime - GetTime()
                             if remaining > 0 then
                                 ns.UI.Aura.SetDuration(self, FormatDuration(remaining))
                             else
                                 ns.UI.Aura.SetDuration(self, "")
+                                self:SetScript("OnUpdate", nil)  -- Stop updating when expired
                             end
                         end
                     end)
                 else
+                    frame:SetScript("OnUpdate", nil)  -- Disable OnUpdate if timer not shown
                     ns.UI.Aura.SetDuration(frame, "")
                 end
             else
